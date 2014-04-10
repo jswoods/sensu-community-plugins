@@ -21,6 +21,8 @@
 #
 # Released under the same terms as Sensu (the MIT license); see LICENSE for details.
 
+require 'sensu/redis'
+
 module Sensu
   module Extension
     class Flapjack < Handler
@@ -30,6 +32,14 @@ module Sensu
 
       def description
         'sends sensu events to the flapjack redis queue'
+      end
+
+      def definition
+        {
+          type: 'extension',
+          name: 'flapjack',
+          mutator: 'flapjack',
+        }
       end
 
       def options
@@ -66,12 +76,14 @@ module Sensu
         end
         details = ['Address:' + client[:address]]
         details << 'Tags:' + tags.join(',')
+        check_status = Sensu::SEVERITIES[check[:status]] || 'unknown'
+        check_output = !check[:output].to_s.empty? && check[:output] || check_status
         flapjack_event = {
           :entity  => client[:name],
           :check   => check[:name],
           :type    => 'service',
-          :state   => Sensu::SEVERITIES[check[:status]] || 'unknown',
-          :summary => check[:output],
+          :state   => check_status,
+          :summary => check_output,
           :details => details.join(' '),
           :time    => check[:executed],
           :tags    => tags
